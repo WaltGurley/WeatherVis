@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<style> 
+    body{
+        background-color:white;
+        font: 20px Impact;
+        margin: auto;
+        position: relative;
+        width: 960px;
+        background-image: url("http://www.esri.com/esri-news/arcnews/spring13articles/~/media/Images/Content/news/arcnews/spring13/p11p1-lg.jpg ");
+
+    }
+    rect{
+      /*fill: none;*/
+      pointer-events: all;
+    }
+
+    circle {
+      /*fill: none;*/
+      stroke-width: 2.5px;
+    }
+
+    #credit {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      color: #ddd;
+    }
+
+    #credit a {
+      color: #fff;
+      font-weight: bold;
+    }
+
+    #weatherBlock{ <!--meant to group the bubble pentagon and bar graph together, with each graph on the L-R sides of pentagon
+      display: inline-block;
+    }
+
+</style>
+<div id="credit">Inspired by <a href="http://blog.pixelbreaker.com/polarclock/">pixelbreaker</a>.</div>
+<script src="js/d3.v3.js"></script>
+
+<head>
+ <title>VisLab WeatherVis</title>
+ <h1> VisLab Weather Visualization</h1>
+</head>
+
+<body>
+<script>
+var width = 1000,
+    height = 800,
+    radius = Math.min(width, height) / 1.9,
+    spacing = .09;
+
+var formatSecond = d3.time.format("%S s"),
+    formatMinute = d3.time.format("%M m"),
+    formatHour = d3.time.format("%H h"),
+    formatDay = d3.time.format("%a"),
+    formatDate = d3.time.format("%d d"),
+    formatMonth = d3.time.format("%b");
+
+var color = d3.scale.linear()
+    .range(["hsl(-180,50%,50%)", "hsl(180,50%,50%)"])
+    .interpolate(interpolateHsl);
+
+var arc = d3.svg.arc()
+    .startAngle(0)
+    .endAngle(function(d) { return d.value * 2 * Math.PI; })
+    .innerRadius(function(d) { return d.index * radius; })
+    .outerRadius(function(d) { return (d.index + spacing) * radius; });
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+  .append("g")
+    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+var field = svg.selectAll("g")
+    .data(fields)
+  .enter().append("g");
+
+field.append("path");
+
+field.append("text");
+
+d3.transition().duration(0).each(tick);
+
+d3.select(self.frameElement).style("height", height + "px");
+
+function tick() {
+  field = field
+      .each(function(d) { this._value = d.value; })
+      .data(fields)
+      .each(function(d) { d.previousValue = this._value; });
+
+  field.select("path")
+    .transition()
+      .ease("elastic")
+      .attrTween("d", arcTween)
+      .style("fill", function(d) { return color(d.value); });
+
+  field.select("text")
+      .attr("dy", function(d) { return d.value < .5 ? "-.5em" : "1em"; })
+      .text(function(d) { return d.text; })
+    .transition()
+      .ease("elastic")
+      .attr("transform", function(d) {
+        return "rotate(" + 360 * d.value + ")"
+            + "translate(0," + -(d.index + spacing / 2) * radius + ")"
+            + "rotate(" + (d.value < .5 ? -90 : 90) + ")"
+      });
+
+  setTimeout(tick, 1000 - Date.now() % 1000);
+}
+
+function arcTween(d) {
+  var i = d3.interpolateNumber(d.previousValue, d.value);
+  return function(t) { d.value = i(t); return arc(d); };
+}
+
+function fields() {
+  var now = new Date;
+  return [
+    {index: .7, text: formatSecond(now), value: now.getSeconds() / 60},
+    {index: .6, text: formatMinute(now), value: now.getMinutes() / 60},
+    {index: .5, text: formatHour(now),   value: now.getHours() / 12},
+    {index: .3, text: formatDay(now),    value: now.getDay() / 7},
+    {index: .2, text: formatDate(now),   value: (now.getDate() - 1) / (32 - new Date(now.getYear(), now.getMonth(), 32).getDate())},
+    {index: .1, text: formatMonth(now),  value: now.getMonth() / 12}
+  ];
+}
+
+// Avoid shortest-path interpolation.
+function interpolateHsl(a, b) {
+  var i = d3.interpolateString(a, b);
+  return function(t) {
+    return d3.hsl(i(t));
+  };
+}
+</script>
+
+<div id="weatherBlock">
+<script>
+//enables circle-pentagon visual display
+function drawPentCircles(x, y, r) {
+ var centerX = x;
+ var centerY = y;
+ var circleRadius = r;
+
+ var h = circleRadius / (Math.sin(36 * (Math.PI / 180)));
+ var angle1 = 72 * (Math.PI / 180);
+ var angle2 = 54 * (Math.PI / 180);
+
+ var points = [];
+
+ points.push([centerX, centerY - h]);
+ points.push([centerX + Math.sin(angle1) * h, centerY - Math.cos(angle1) * h]);
+ points.push([x + circleRadius, centerY + Math.sin(angle2) * h]);
+ points.push([x - circleRadius, centerY + Math.sin(angle2) * h]);
+ points.push([centerX - Math.sin(angle1) * h, centerY - Math.cos(angle1) * h]);
+
+ return points;
+}
+
+
+var circleW = 1100;
+var circleH = 625;
+var circleR = 100;
+
+var svg = d3.select("body")
+                .append("svg")
+                    .attr({
+                        width:circleW,
+                        height:circleH,
+                        radius:circleR
+                    });
+
+var centerPoints = drawPentCircles(circleW / 2, circleH/ 2, circleR);
+
+svg.on("click", function(){//the bubble pentagon will "pop up" when user clicks on space b/w polar clock and graphs
+circles = svg.selectAll("div")
+  .data(centerPoints)
+  .enter().append("circle")
+  .attr({
+    "r": circleR,
+    "cx": function(d) { return d[0]; },
+    "cy": function(d) { return d[1]; },
+    "fill": "#CC0000"
+  });
+
+var weatherData = [  //taken from wunderAPI.json file
+  {"type":"weather - ", "status":"Mostly Cloudy"},
+  {"type":"Relative Humidity -", "status":"92%"},
+  {"type":"Wind Condition: ", "status":"Calm"},
+  {"type":"Today's Precipitation - ", "status":0.0},
+  {"type":"Solar Radiation: " , "status":"---"},
+];
+
+//filling the bubbles with the weather data
+var texts = svg.selectAll("text")
+                      .data(weatherData)
+                      .enter()
+                      .append("text")
+                          .text(function(d){ return [d.type, d.status]})
+                          .attr({
+                              x:function(d,i) { return d3.select(circles[0][i]).attr("cx")},
+                              y:function(d,i) { return d3.select(circles[0][i]).attr("cy")},
+                              "text-anchor": "middle"
+                            })});
+<!--//////////////////////////////Bar Graph Section-//////////////////////////////-->
+d3.json("js/tempGraph.json", function (data) {
+  var canvas = d3.select("body").append("svg")
+                 .attr("width", 300)
+                 .attr("height", 300)
+            canvas.selectAll("rect")
+                  .data(data)
+                  .enter()
+                         .append("rect")
+                         .attr("width", function (d) {return d.temp * 10; })
+                         .attr("height", 48)
+                         .attr("y", function (d,i) {return i * 50; })
+                         .attr("fill", "red");
+            canvas.selectAll("text")
+                  .data(data)
+                  .enter()
+                         .append("text")
+                         .attr("fill", "white")
+                         .attr("y", function (d,i) {return i * 50 + 24; })
+                         .attr("x", function (d,i) {return 25;})
+                         .text(function (d) {return d.temp; })
+})
+
+
+    d3.json("js/dewGraph.json", function (data) {
+      var canvas2 = d3.select("body").append("svg")
+                     .attr("width", 300)
+                     .attr("height", 300)
+                canvas2.selectAll("rect")
+                      .data(data)
+                      .enter()
+                             .append("rect")
+                             .attr("width", function (d) {return d.dewpoint * 10; })
+                             .attr("height", 48)
+                             .attr("y", function (d,i) {return i * 50; })
+                             .attr("fill", "blue");
+                canvas2.selectAll("text")
+                      .data(data)
+                      .enter()
+                             .append("text")
+                             .attr("fill", "white")
+                             .attr("y", function (d,i) {return i * 50 + 24; })
+                             .attr("x", function (d,i) {return 25;})
+                             .text(function (d) {return d.dewpoint; })
+    })
+  </script>
+</div>
+</body>
+</html>
