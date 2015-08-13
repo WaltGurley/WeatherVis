@@ -82,9 +82,24 @@ d3.json("js/curCond.json", function(data) {
       formatHours = d3.time.format("%H");
 
     var time = [
-      {"text": formatSeconds(now), "segment": now.getSeconds() / 60 * 2 * Math.PI, "oldSeg": 0},
-      {"text": formatMinutes(now), "segment": now.getMinutes() / 60 * 2 * Math.PI, "oldSeg": 0},
-      {"text": formatHours(now), "segment": now.getHours() / 24 * 2 * Math.PI, "oldSeg": 0}
+      {
+        "id": 0,
+        "text": formatSeconds(now),
+        "segment": now.getSeconds() / 60 * 2 * Math.PI,
+        "oldSeg": 0
+      },
+      {
+        "id": 1,
+        "text": formatMinutes(now),
+        "segment": now.getMinutes() / 60 * 2 * Math.PI,
+        "oldSeg": 0
+      },
+      {
+        "id": 2,
+        "text": formatHours(now),
+        "segment": now.getHours() / 24 * 2 * Math.PI,
+        "oldSeg": 0
+      }
     ];
 
     return time;
@@ -97,11 +112,11 @@ d3.json("js/curCond.json", function(data) {
     var arc = d3.svg.arc()
       .startAngle(0)
       .endAngle(function(d) { return d.segment; })
-      .innerRadius(function(d, i) {
-        return i * circleRadius * 2 / time.length + (distance + circleRadius);
+      .innerRadius(function(d) {
+        return d.id * circleRadius * 2 / time.length + (distance + circleRadius);
       })
       .outerRadius(function(d, i) {
-        return (i + 1) * circleRadius * 2 / time.length + (distance + circleRadius);
+        return (d.id + 1) * circleRadius * 2 / time.length + (distance + circleRadius);
       });
 
     var arcs = svg.selectAll("path")
@@ -111,13 +126,15 @@ d3.json("js/curCond.json", function(data) {
         "d": arc,
         "transform": "translate(" + svgWidth / 2 + "," + svgHeight / 2 + ")"
       })
-      .style("fill", "#000");
+      .style("fill", function(d) { return "#0" + d.id * 44; });
 
     function clockTick() {
       arcs.each(function(d) { this._segment = d.segment; });
       arcs.data(updateTime)
         .each(function(d) { d.oldSeg = this._segment; })
         .transition()
+          .duration(1000)
+          .ease("linear")
           .call(arcTween);
     }
 
@@ -128,7 +145,6 @@ d3.json("js/curCond.json", function(data) {
         var interpolate = d3.interpolate(d.oldSeg, d.segment);
         return function(t) {
           d.segment = interpolate(t);
-          console.log(d.segment)
           return arc(d);
         };
       });
